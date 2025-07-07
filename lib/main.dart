@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'pages/home_page.dart';
+import 'package:time_monitor_mobile/pages/main_page.dart';
 
 void main() {
   runApp(const Home());
@@ -23,8 +23,8 @@ class Home extends StatelessWidget {
           toolbarHeight: 0,
         ),
       ),
-      // 直接使用home而不是路由，因为现在使用自定义动画导航
-      home: const MyHomePage(title: 'HOME'),
+      // 使用新的MainPage作为主页
+      home: const MainPage(title: 'TMM'),
     );
   }
 }
