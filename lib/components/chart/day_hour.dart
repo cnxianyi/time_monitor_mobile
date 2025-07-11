@@ -6,25 +6,29 @@ class AppColors {
   static const Color contentColorPurple = Colors.purple;
   static const Color contentColorCyan = Colors.cyan;
   static const Color contentColorBlue = Colors.blue;
+  static const Color contentColorGreen = Colors.lightGreen;
+  static const Color contentColorGrey = Colors.grey;
 }
 
 // 创建图例组件
 class Legend {
   final String name;
   final Color color;
+  final String? timeText; // 添加时间文本
 
-  Legend(this.name, this.color);
+  Legend(this.name, this.color, {this.timeText});
 }
 
 class LegendsListWidget extends StatelessWidget {
   final List<Legend> legends;
 
-  const LegendsListWidget({Key? key, required this.legends}) : super(key: key);
+  const LegendsListWidget({super.key, required this.legends});
 
   @override
   Widget build(BuildContext context) {
     return Wrap(
       spacing: 16,
+      runSpacing: 8, // 添加行间距
       children: legends.map((legend) {
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -39,6 +43,13 @@ class LegendsListWidget extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(legend.name, style: const TextStyle(fontSize: 12)),
+            if (legend.timeText != null) ...[
+              const SizedBox(width: 4),
+              Text(
+                legend.timeText!,
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+            ],
           ],
         );
       }).toList(),
@@ -47,34 +58,63 @@ class LegendsListWidget extends StatelessWidget {
 }
 
 class DayHourChart extends StatelessWidget {
-  DayHourChart({super.key});
+  final String totalTimeText;
+  final Map<int, List<Map<String, dynamic>>> hourlyData;
 
-  final pilateColor = AppColors.contentColorPurple;
-  final cyclingColor = AppColors.contentColorCyan;
-  final quickWorkoutColor = AppColors.contentColorBlue;
+  DayHourChart({
+    super.key,
+    required this.totalTimeText,
+    required this.hourlyData,
+  });
+
+  // 更新颜色定义，对应不同类别
+  final studyColor = AppColors.contentColorGreen; // 学习 - 绿色
+  final entertainmentColor = AppColors.contentColorPurple; // 娱乐 - 紫色
+  final socialColor = AppColors.contentColorBlue; // 社交 - 蓝色
+  final otherColor = AppColors.contentColorGrey; // 其他 - 灰色
   final betweenSpace = 0.2;
 
   BarChartGroupData generateGroupData(
     int x,
-    double pilates,
-    double quickWorkout,
-    double cycling,
+    double study,
+    double entertainment,
+    double social,
+    double other,
   ) {
     return BarChartGroupData(
       x: x,
       groupVertically: true,
       barRods: [
-        BarChartRodData(fromY: 0, toY: pilates, color: pilateColor, width: 5),
+        BarChartRodData(fromY: 0, toY: study, color: studyColor, width: 5),
         BarChartRodData(
-          fromY: pilates + betweenSpace,
-          toY: pilates + betweenSpace + quickWorkout,
-          color: quickWorkoutColor,
+          fromY: study + betweenSpace,
+          toY: study + betweenSpace + entertainment,
+          color: entertainmentColor,
           width: 5,
         ),
         BarChartRodData(
-          fromY: pilates + betweenSpace + quickWorkout + betweenSpace,
-          toY: pilates + betweenSpace + quickWorkout + betweenSpace + cycling,
-          color: cyclingColor,
+          fromY: study + betweenSpace + entertainment + betweenSpace,
+          toY: study + betweenSpace + entertainment + betweenSpace + social,
+          color: socialColor,
+          width: 5,
+        ),
+        BarChartRodData(
+          fromY:
+              study +
+              betweenSpace +
+              entertainment +
+              betweenSpace +
+              social +
+              betweenSpace,
+          toY:
+              study +
+              betweenSpace +
+              entertainment +
+              betweenSpace +
+              social +
+              betweenSpace +
+              other,
+          color: otherColor,
           width: 5,
         ),
       ],
@@ -169,8 +209,92 @@ class DayHourChart extends StatelessWidget {
     );
   }
 
+  List<BarChartGroupData> _generateBarGroups() {
+    List<BarChartGroupData> groups = [];
+
+    // 按小时创建柱状图组
+    for (int hour = 0; hour <= 24; hour++) {
+      double study = 0; // 学习 - 绿色
+      double entertainment = 0; // 娱乐 - 紫色
+      double social = 0; // 社交 - 蓝色
+      double other = 0; // 其他 - 灰色
+
+      // 如果有该小时的数据，进行汇总
+      if (hourlyData.containsKey(hour)) {
+        for (var appData in hourlyData[hour]!) {
+          int seconds = appData['seconds'];
+          int legend = appData['legend'] ?? 4; // 默认为"其他"类别
+
+          // 将秒转换为分钟，以便在图表中显示
+          double minutes = seconds / 60;
+
+          // 根据legend字段分类应用
+          // 1-学习, 2-娱乐, 3-社交, 4-其他
+          switch (legend) {
+            case 1:
+              study += minutes; // 学习
+              break;
+            case 2:
+              entertainment += minutes; // 娱乐
+              break;
+            case 3:
+              social += minutes; // 社交
+              break;
+            case 4:
+            default:
+              other += minutes; // 其他
+              break;
+          }
+        }
+      }
+
+      groups.add(generateGroupData(hour, study, entertainment, social, other));
+    }
+
+    return groups;
+  }
+
+  // 计算各类别总时间
+  Map<int, int> _calculateCategorySummaries() {
+    Map<int, int> categorySummaries = {1: 0, 2: 0, 3: 0, 4: 0}; // 初始化各类别总秒数
+
+    // 遍历所有小时数据
+    hourlyData.forEach((hour, appDataList) {
+      for (var appData in appDataList) {
+        int seconds = appData['seconds'];
+        int legend = appData['legend'] ?? 4; // 默认为"其他"类别
+
+        // 累加各类别总时间
+        if (categorySummaries.containsKey(legend)) {
+          categorySummaries[legend] = categorySummaries[legend]! + seconds;
+        }
+      }
+    });
+
+    return categorySummaries;
+  }
+
+  // 格式化秒数为可读时间
+  String _formatSeconds(int seconds) {
+    final hours = seconds ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+
+    if (hours > 0) {
+      return '$hours小时$minutes分钟';
+    } else {
+      return '$minutes分钟';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final day = now.day.toString().padLeft(2, '0');
+    final month = now.month.toString().padLeft(2, '0');
+
+    // 计算各类别总时间
+    final categorySummaries = _calculateCategorySummaries();
+
     return Padding(
       padding: const EdgeInsets.only(top: 0, left: 12, right: 12, bottom: 0),
       child: Column(
@@ -178,7 +302,7 @@ class DayHourChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '7月11日 今天',
+            '$month月$day日 今天',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
@@ -186,7 +310,7 @@ class DayHourChart extends StatelessWidget {
             ),
           ),
           Text(
-            '4小时44分钟',
+            totalTimeText,
             style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 12),
@@ -210,36 +334,16 @@ class DayHourChart extends StatelessWidget {
                 barTouchData: const BarTouchData(enabled: false),
                 borderData: FlBorderData(show: false),
                 gridData: const FlGridData(show: false),
-                barGroups: [
-                  generateGroupData(0, 0, 15, 5),
-                  generateGroupData(1, 15, 10, 5),
-                  generateGroupData(2, 5, 15, 10),
-                  generateGroupData(3, 20, 0, 5),
-                  generateGroupData(4, 18, 0, 10),
-                  generateGroupData(5, 22, 0, 8),
-                  generateGroupData(6, 0, 10, 5),
-                  generateGroupData(7, 12, 15, 8),
-                  generateGroupData(8, 25, 0, 15),
-                  generateGroupData(9, 0, 15, 12),
-                  generateGroupData(10, 0, 20, 10),
-                  generateGroupData(11, 0, 15, 5),
-                  generateGroupData(12, 25, 0, 5),
-                  generateGroupData(13, 20, 15, 10),
-                  generateGroupData(14, 0, 0, 15),
-                  generateGroupData(15, 0, 15, 10),
-                  generateGroupData(16, 12, 0, 15),
-                  generateGroupData(17, 25, 0, 18),
-                  generateGroupData(18, 0, 12, 5),
-                  generateGroupData(19, 0, 15, 8),
-                  generateGroupData(20, 15, 18, 0),
-                  generateGroupData(21, 18, 15, 0),
-                  generateGroupData(22, 15, 0, 10),
-                  generateGroupData(23, 0, 15, 8),
-                  generateGroupData(24, 15, 0, 5),
-                ],
+                barGroups: _generateBarGroups(),
                 maxY: 60,
                 extraLinesData: ExtraLinesData(
                   horizontalLines: [
+                    HorizontalLine(
+                      y: 0,
+                      color: Colors.grey[500],
+                      strokeWidth: 0.5,
+                      dashArray: [20, 4],
+                    ),
                     HorizontalLine(
                       y: 15,
                       color: Colors.grey[500],
@@ -272,9 +376,26 @@ class DayHourChart extends StatelessWidget {
           const SizedBox(height: 14),
           LegendsListWidget(
             legends: [
-              Legend('娱乐', pilateColor),
-              Legend('社交', quickWorkoutColor),
-              Legend('学习', cyclingColor),
+              Legend(
+                '学习',
+                studyColor,
+                timeText: _formatSeconds(categorySummaries[1]!),
+              ),
+              Legend(
+                '娱乐',
+                entertainmentColor,
+                timeText: _formatSeconds(categorySummaries[2]!),
+              ),
+              Legend(
+                '社交',
+                socialColor,
+                timeText: _formatSeconds(categorySummaries[3]!),
+              ),
+              Legend(
+                '其他',
+                otherColor,
+                timeText: _formatSeconds(categorySummaries[4]!),
+              ),
             ],
           ),
         ],

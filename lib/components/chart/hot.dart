@@ -3,88 +3,72 @@ import 'package:time_monitor_mobile/routes/page_route_transitions.dart';
 import 'package:time_monitor_mobile/pages/detail_page.dart';
 
 class HotChart extends StatelessWidget {
-  const HotChart({super.key});
+  final List<dynamic> appUsageData;
+
+  const HotChart({super.key, required this.appUsageData});
 
   @override
   Widget build(BuildContext context) {
-    // 示例数据
-    final List<HotItem> items = [
-      HotItem(
-        icon: Icons.chat,
-        title: '社交',
-        progress: 0.99,
-        description: '3小时12分钟',
-        color: Colors.orange,
-      ),
-      HotItem(
-        icon: Icons.school,
-        title: '学习',
-        progress: 0.5,
-        description: '2小时44分钟',
-        color: Colors.blue,
-      ),
-      HotItem(
-        icon: Icons.videogame_asset,
-        title: '游戏',
-        progress: 0.8,
-        description: '4小时20分钟',
-        color: Colors.purple,
-      ),
-      HotItem(
-        icon: Icons.movie,
-        title: '娱乐',
-        progress: 0.6,
-        description: '2小时56分钟',
-        color: Colors.red,
-      ),
-      HotItem(
-        icon: Icons.fitness_center,
-        title: '健身',
-        progress: 0.3,
-        description: '1小时25分钟',
-        color: Colors.green,
-      ),
-      HotItem(
-        icon: Icons.movie,
-        title: '娱乐',
-        progress: 0.6,
-        description: '2小时56分钟',
-        color: Colors.red,
-      ),
-      HotItem(
-        icon: Icons.fitness_center,
-        title: '健身',
-        progress: 0.3,
-        description: '1小时25分钟',
-        color: Colors.green,
-      ),
-    ];
+    // 如果没有数据，显示提示信息
+    if (appUsageData.isEmpty) {
+      return const Center(
+        child: Padding(padding: EdgeInsets.all(32), child: Text('暂无应用使用数据')),
+      );
+    }
 
     // 将ListView替换为Column，使内容随屏幕一起滚动
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: List.generate(items.length * 2 - 1, (index) {
+      children: List.generate(appUsageData.length * 2 - 1, (index) {
         if (index.isOdd) {
           return const Divider(height: 1);
         } else {
-          return _buildListItem(context, items[index ~/ 2]);
+          return _buildListItem(context, appUsageData[index ~/ 2]);
         }
       }),
     );
   }
 
-  Widget _buildListItem(BuildContext context, HotItem item) {
+  Widget _buildListItem(BuildContext context, dynamic item) {
+    // 将动态数据转换为我们需要的格式
+    final String name = item is Map ? item['name'] ?? '' : item.name;
+    final Color color = item is Map ? item['color'] ?? Colors.blue : item.color;
+    final double progress = item is Map
+        ? item['progress'] ?? 0.0
+        : item.progress;
+    final String formattedTime = item is Map
+        ? item['formattedTime'] ?? '0分钟'
+        : item.formattedTime;
+
+    // 获取标题数据
+    final List<dynamic> titles = item is Map
+        ? item['titles'] ?? []
+        : item.titles ?? [];
+
+    // 获取应用图标
+    IconData appIcon = _getIconForApp(name);
+
     return InkWell(
       onTap: () {
         Navigator.of(context).push(
           createSlidePageRoute(
             DetailPage(
-              title: item.title,
-              icon: item.icon,
-              progress: item.progress,
-              description: item.description,
-              color: item.color,
+              title: _getDisplayName(name),
+              icon: appIcon,
+              progress: progress,
+              description: formattedTime,
+              color: color,
+              appUsageData: titles.isNotEmpty
+                  ? [
+                      {
+                        'name': _getDisplayName(name),
+                        'progress': progress,
+                        'formattedTime': formattedTime,
+                        'titles': titles,
+                      },
+                    ]
+                  : null,
             ),
           ),
         );
@@ -98,10 +82,10 @@ class HotChart extends StatelessWidget {
               width: 32,
               height: 32,
               decoration: BoxDecoration(
-                color: item.color.withOpacity(0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Icon(item.icon, color: item.color, size: 24),
+              child: Icon(appIcon, color: color, size: 24),
             ),
 
             const SizedBox(width: 16),
@@ -113,7 +97,7 @@ class HotChart extends StatelessWidget {
                 children: [
                   // 标题
                   Text(
-                    item.title,
+                    _getDisplayName(name),
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w600,
@@ -129,11 +113,9 @@ class HotChart extends StatelessWidget {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(4),
                           child: LinearProgressIndicator(
-                            value: item.progress,
+                            value: progress,
                             backgroundColor: Colors.grey[200],
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              item.color,
-                            ),
+                            valueColor: AlwaysStoppedAnimation<Color>(color),
                             minHeight: 3,
                           ),
                         ),
@@ -145,7 +127,7 @@ class HotChart extends StatelessWidget {
                       Expanded(
                         flex: 2,
                         child: Text(
-                          item.description,
+                          formattedTime,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],
@@ -167,21 +149,62 @@ class HotChart extends StatelessWidget {
       ),
     );
   }
-}
 
-// 数据模型
-class HotItem {
-  final IconData icon;
-  final String title;
-  final double progress;
-  final String description;
-  final Color color;
+  // 根据应用名称获取合适的图标
+  IconData _getIconForApp(String appName) {
+    appName = appName.toLowerCase();
 
-  HotItem({
-    required this.icon,
-    required this.title,
-    required this.progress,
-    required this.description,
-    required this.color,
-  });
+    if (appName.contains('chrome')) {
+      return Icons.public;
+    } else if (appName.contains('goland') ||
+        appName.contains('idea') ||
+        appName.contains('code')) {
+      return Icons.code;
+    } else if (appName.contains('terminal')) {
+      return Icons.terminal;
+    } else if (appName.contains('finder')) {
+      return Icons.folder;
+    } else if (appName.contains('word') || appName.contains('docs')) {
+      return Icons.description;
+    } else if (appName.contains('excel') || appName.contains('sheets')) {
+      return Icons.grid_on;
+    } else if (appName.contains('outlook') || appName.contains('mail')) {
+      return Icons.mail;
+    } else if (appName.contains('spotify') || appName.contains('music')) {
+      return Icons.music_note;
+    } else if (appName.contains('zoom')) {
+      return Icons.video_call;
+    } else if (appName.contains('slack')) {
+      return Icons.chat;
+    } else if (appName.contains('discord')) {
+      return Icons.chat_bubble;
+    } else {
+      return Icons.apps;
+    }
+  }
+
+  // 获取应用的显示名称
+  String _getDisplayName(String appName) {
+    // 提取应用名称，移除路径和后缀
+    String displayName = appName;
+
+    // 针对特定应用优化显示名称
+    if (appName.toLowerCase().contains('chrome')) {
+      return 'Google Chrome';
+    } else if (appName.toLowerCase().contains('goland')) {
+      return 'GoLand';
+    } else if (appName.toLowerCase().contains('idea')) {
+      return 'IntelliJ IDEA';
+    } else if (appName.toLowerCase() == 'finder') {
+      return 'Finder';
+    } else if (appName.toLowerCase().contains('terminal')) {
+      return 'Terminal';
+    } else if (appName.toLowerCase().contains('zoom')) {
+      return 'Zoom';
+    } else if (appName.toLowerCase().contains('slack')) {
+      return 'Slack';
+    }
+
+    return displayName;
+  }
 }
