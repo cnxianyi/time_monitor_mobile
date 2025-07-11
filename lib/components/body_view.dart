@@ -20,31 +20,35 @@ class BodyView extends StatelessWidget {
           children: [
             // 为 header 添加 Padding 和自定义样式
             Padding(
-              padding: const EdgeInsets.only(left: 12.0), // 左侧 padding 5
+              padding: const EdgeInsets.only(left: 24.0), // 左侧 padding 5
               child: Text(
                 header,
                 style: TextStyle(
-                  fontSize: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.fontSize, // 字体小一号
+                  fontSize: 12,
                   color: Colors.grey[600], // 灰色
                 ),
               ),
             ),
           ],
         ),
-        Column(children: [...children]),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.grey[100],
+            borderRadius: BorderRadius.circular(16),
+          ),
+          margin: const EdgeInsets.symmetric(vertical: 10, horizontal: 5),
+          padding: const EdgeInsets.all(8),
+          child: Column(children: [...children]),
+        ),
         Row(
           children: [
             // 为 header 添加 Padding 和自定义样式
             Padding(
-              padding: const EdgeInsets.only(left: 12.0), // 左侧 padding 5
+              padding: const EdgeInsets.only(left: 24.0), // 左侧 padding 5
               child: Text(
                 footer,
                 style: TextStyle(
-                  fontSize: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.fontSize, // 字体小一号
+                  fontSize: 12,
                   color: Colors.grey[600], // 灰色
                 ),
               ),
