@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class BodyView extends StatelessWidget {
   final String header;
-  final String footer;
+  final dynamic footer; // 修改为dynamic类型，可以接受String或Widget
   final List<Widget> children;
 
   const BodyView({
@@ -42,16 +42,18 @@ class BodyView extends StatelessWidget {
         ),
         Row(
           children: [
-            // 为 header 添加 Padding 和自定义样式
+            // 为 footer 添加 Padding 和自定义样式
             Padding(
               padding: const EdgeInsets.only(left: 24.0), // 左侧 padding 5
-              child: Text(
-                footer,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600], // 灰色
-                ),
-              ),
+              child: footer is Widget
+                  ? footer
+                  : Text(
+                      footer.toString(),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[600], // 灰色
+                      ),
+                    ),
             ),
           ],
         ),
