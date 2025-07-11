@@ -46,8 +46,8 @@ class LegendsListWidget extends StatelessWidget {
   }
 }
 
-class BarChartSample6 extends StatelessWidget {
-  BarChartSample6({super.key});
+class DayHourChart extends StatelessWidget {
+  DayHourChart({super.key});
 
   final pilateColor = AppColors.contentColorPurple;
   final cyclingColor = AppColors.contentColorCyan;
@@ -241,15 +241,27 @@ class BarChartSample6 extends StatelessWidget {
                 extraLinesData: ExtraLinesData(
                   horizontalLines: [
                     HorizontalLine(
+                      y: 15,
+                      color: Colors.grey[500],
+                      strokeWidth: 0.5,
+                      dashArray: [20, 4],
+                    ),
+                    HorizontalLine(
                       y: 30,
-                      color: pilateColor,
-                      strokeWidth: 1,
+                      color: Colors.grey[500],
+                      strokeWidth: 0.5,
+                      dashArray: [20, 4],
+                    ),
+                    HorizontalLine(
+                      y: 45,
+                      color: Colors.grey[500],
+                      strokeWidth: 0.5,
                       dashArray: [20, 4],
                     ),
                     HorizontalLine(
                       y: 60,
-                      color: cyclingColor,
-                      strokeWidth: 1,
+                      color: Colors.grey[500],
+                      strokeWidth: 0.5,
                       dashArray: [20, 4],
                     ),
                   ],
