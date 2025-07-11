@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-// 创建一个类似Vue RouterView的容器组件
 class TabViewContainer extends StatefulWidget {
   final List<String> tabs;
   final List<Widget> tabViews;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:time_monitor_mobile/components/tab_view_container.dart';
-import 'package:time_monitor_mobile/components/day_view.dart';
-import 'package:time_monitor_mobile/components/week_view.dart';
+import 'package:time_monitor_mobile/pages/day_view.dart';
+import 'package:time_monitor_mobile/pages/week_view.dart';
 
 class MainPage extends StatelessWidget {
   const MainPage({super.key, required this.title});
