@@ -7,6 +7,9 @@ import 'package:time_monitor_mobile/components/body_view.dart';
 import 'package:time_monitor_mobile/components/chart/day_hour.dart';
 import 'package:time_monitor_mobile/components/chart/hot.dart';
 import 'package:intl/intl.dart';
+import 'package:time_monitor_mobile/pages/settings_page.dart';
+import 'package:time_monitor_mobile/routes/page_route_transitions.dart';
+import 'package:time_monitor_mobile/utils/app_settings.dart'; // Added import for AppSettings
 
 class DayView extends StatefulWidget {
   final String title;
@@ -72,8 +75,19 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     });
 
     try {
+      // 使用设置中的用户名，如果为空则使用默认值 'guest'
+      String username;
+      try {
+        username = AppSettings.username.isNotEmpty
+            ? AppSettings.username
+            : 'guest';
+      } catch (e) {
+        print('获取用户名失败，使用默认值: $e');
+        username = 'guest'; // 出错时使用默认值
+      }
+
       final response = await http.get(
-        Uri.parse('https://tms.xianyiapi.eu.org/?userName=xianyi'),
+        Uri.parse('https://tms.xianyiapi.eu.org/?userName=$username'),
       );
 
       if (response.statusCode == 200) {
@@ -260,60 +274,91 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: _isLoading
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32.0),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            : _errorMessage.isNotEmpty
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(32.0),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        _errorMessage,
-                        style: const TextStyle(color: Colors.red),
-                        textAlign: TextAlign.center,
+    return Stack(
+      children: [
+        SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: _isLoading
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  )
+                : _errorMessage.isNotEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _errorMessage,
+                            style: const TextStyle(color: Colors.red),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: _fetchUserData,
+                            child: const Text('重试'),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: _fetchUserData,
-                        child: const Text('重试'),
+                    ),
+                  )
+                : Column(
+                    children: [
+                      BodyView(
+                        header: '屏幕使用时间',
+                        footer: _buildOnlineStatus(),
+                        children: [
+                          DayHourChart(
+                            totalTimeText: _formatTotalTime(_totalMinutes),
+                            hourlyData: _hourlyData,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      BodyView(
+                        header: '最常使用',
+                        footer: '',
+                        children: [
+                          HotChart(
+                            appUsageData: _convertToHotChartData(_topApps),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-              )
-            : Column(
-                children: [
-                  BodyView(
-                    header: '屏幕使用时间',
-                    footer: _buildOnlineStatus(),
-                    children: [
-                      DayHourChart(
-                        totalTimeText: _formatTotalTime(_totalMinutes),
-                        hourlyData: _hourlyData,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  BodyView(
-                    header: '最常使用',
-                    footer: '',
-                    children: [
-                      HotChart(appUsageData: _convertToHotChartData(_topApps)),
-                    ],
-                  ),
-                ],
+          ),
+        ),
+        // 添加设置按钮到右上角
+        Positioned(
+          top: -8,
+          right: 8,
+          child: TextButton(
+            onPressed: () {
+              Navigator.of(
+                context,
+              ).push(createSlidePageRoute(const SettingsPage()));
+            },
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
               ),
-      ),
+            ),
+            child: const Text(
+              '设置',
+              style: TextStyle(
+                color: Color.fromARGB(222, 11, 145, 255),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
