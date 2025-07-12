@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -21,18 +22,23 @@ class DayView extends StatefulWidget {
 }
 
 class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
-  bool _isLoading = false;
   String _errorMessage = '';
+  bool _isLoading = false; // 添加回loading状态
   Map<String, dynamic> _userData = {};
   Timer? _refreshTimer; // 添加定时器
   String _lastOnlineText = ''; // 添加最后在线时间文本
   bool _isOnline = false; // 是否在线
 
+  // 添加日期相关变量
+  DateTime _selectedDate = DateTime.now();
+  final DateFormat _dateFormatter = DateFormat('yyyy-MM-dd');
+  String _formattedDateText = '';
+
   // 添加闪烁动画控制器
   late AnimationController _animationController;
   late Animation<double> _animation;
 
-  // 处理后的数据
+  // 处理后的数据 - 初始化为空对象而不是null
   Map<int, List<Map<String, dynamic>>> _hourlyData = {};
   List<AppUsageData> _topApps = [];
   int _totalMinutes = 0;
@@ -40,6 +46,9 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
+    // 初始化日期显示
+    _formattedDateText = _formatDateForDisplay(_selectedDate);
 
     // 初始化动画控制器
     _animationController = AnimationController(
@@ -52,11 +61,14 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       end: 0.8,
     ).animate(_animationController);
 
-    _fetchUserData();
+    // 首次加载数据，显示loading
+    _fetchUserData(showLoading: true);
 
-    // 设置定时器，每6秒刷新一次数据
+    // 设置定时器，每6秒刷新一次数据，但仅当显示当天数据时才自动刷新
     _refreshTimer = Timer.periodic(const Duration(seconds: 6), (timer) {
-      _fetchUserData();
+      if (_isToday(_selectedDate)) {
+        _fetchUserData(showLoading: false); // 自动刷新不显示loading
+      }
     });
   }
 
@@ -68,11 +80,66 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
-  Future<void> _fetchUserData() async {
+  // 检查是否是今天
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  // 格式化日期用于显示
+  String _formatDateForDisplay(DateTime date) {
+    if (_isToday(date)) {
+      return '今天';
+    }
+
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+
+    if (date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day) {
+      return '昨天';
+    }
+
+    return '${date.month}月${date.day}日';
+  }
+
+  // 切换到前一天
+  void _goToPreviousDay() {
     setState(() {
-      _isLoading = false;
-      _errorMessage = '';
+      _selectedDate = _selectedDate.subtract(const Duration(days: 1));
+      _formattedDateText = _formatDateForDisplay(_selectedDate);
+      _fetchUserData(showLoading: true); // 手动切换日期，显示loading
     });
+  }
+
+  // 切换到后一天，但不能超过今天
+  void _goToNextDay() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    if (_selectedDate.isBefore(today)) {
+      setState(() {
+        _selectedDate = _selectedDate.add(const Duration(days: 1));
+        _formattedDateText = _formatDateForDisplay(_selectedDate);
+        _fetchUserData(showLoading: true); // 手动切换日期，显示loading
+      });
+    }
+  }
+
+  Future<void> _fetchUserData({required bool showLoading}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = '';
+      });
+    } else {
+      setState(() {
+        _errorMessage = '';
+      });
+    }
 
     try {
       // 使用设置中的用户名，如果为空则使用默认值 'guest'
@@ -86,32 +153,42 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
         username = 'guest'; // 出错时使用默认值
       }
 
+      // 格式化日期为 API 请求
+      final formattedDate = _dateFormatter.format(_selectedDate);
+      print('正在获取日期 $formattedDate 的数据，用户名: $username');
+
       final response = await http.get(
-        Uri.parse('https://tms.xianyiapi.eu.org/?userName=$username'),
+        Uri.parse(
+          'https://tms.xianyiapi.eu.org/?userName=$username&date=$formattedDate',
+        ),
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+        print(
+          'API响应成功: ${response.body.substring(0, min(100, response.body.length))}...',
+        );
+
         setState(() {
           _userData = data;
           _processData(data);
           _updateLastOnlineText(data);
-          _isLoading = false;
+          _isLoading = false; // 无论是否显示loading，完成后都设置为false
         });
-        print('Data fetched successfully: ${_userData.toString()}');
+        print('数据处理完成: ${_hourlyData.length} 小时数据, ${_topApps.length} 个应用');
       } else {
+        print('API请求失败，状态码: ${response.statusCode}');
         setState(() {
           _errorMessage = '请求失败，状态码: ${response.statusCode}';
           _isLoading = false;
         });
-        print('Request failed with status: ${response.statusCode}');
       }
     } catch (e) {
+      print('获取数据时发生错误: $e');
       setState(() {
         _errorMessage = '发生错误: $e';
         _isLoading = false;
       });
-      print('Error fetching data: $e');
     }
   }
 
@@ -138,7 +215,7 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
           _isOnline = false;
         }
       } catch (e) {
-        print('Error parsing lastTime: $e');
+        print('解析lastTime时出错: $e');
         _lastOnlineText = '最后在线时间: 未知';
         _isOnline = false;
       }
@@ -149,17 +226,14 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
   }
 
   void _processData(Map<String, dynamic> data) {
+    // 重置数据
+    Map<String, AppUsageData> appUsage = {};
+    _hourlyData = {};
+    int totalSeconds = 0;
+
     if (data['code'] == 200 && data['data'] != null) {
       final List<dynamic> appData = data['data'];
-
-      // 总使用时间（秒）
-      int totalSeconds = 0;
-
-      // 临时存储按应用程序分组的数据
-      Map<String, AppUsageData> appUsage = {};
-
-      // 按小时分组的数据
-      _hourlyData = {};
+      print('处理 ${appData.length} 条应用数据');
 
       // 处理每个应用的数据
       for (var app in appData) {
@@ -216,6 +290,13 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
       // 转换为列表并排序
       _topApps = appUsage.values.toList()
         ..sort((a, b) => b.seconds.compareTo(a.seconds));
+
+      print('数据处理完成: 总时间 $_totalMinutes 分钟');
+    } else {
+      print('API返回错误或数据为空: ${data['code']}');
+      // 确保即使没有数据也初始化为空列表/Map
+      _totalMinutes = 0;
+      _topApps = [];
     }
   }
 
@@ -274,91 +355,106 @@ class _DayViewState extends State<DayView> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: _isLoading
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(32.0),
-                      child: CircularProgressIndicator(),
-                    ),
-                  )
-                : _errorMessage.isNotEmpty
-                ? Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(32.0),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            _errorMessage,
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: _fetchUserData,
-                            child: const Text('重试'),
-                          ),
-                        ],
+    return GestureDetector(
+      // 添加左右滑动手势
+      onHorizontalDragEnd: (details) {
+        if (details.primaryVelocity! > 0) {
+          // 右滑，显示前一天
+          _goToPreviousDay();
+        } else if (details.primaryVelocity! < 0) {
+          // 左滑，显示后一天，但不能超过今天
+          _goToNextDay();
+        }
+      },
+      child: Stack(
+        children: [
+          SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  // 显示错误信息（如果有）
+                  if (_errorMessage.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16.0),
+                      child: Text(
+                        _errorMessage,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
                       ),
                     ),
-                  )
-                : Column(
-                    children: [
-                      BodyView(
-                        header: '屏幕使用时间',
-                        footer: _buildOnlineStatus(),
-                        children: [
-                          DayHourChart(
-                            totalTimeText: _formatTotalTime(_totalMinutes),
-                            hourlyData: _hourlyData,
+
+                  // 显示加载指示器或内容
+                  _isLoading
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(32.0),
+                            child: CircularProgressIndicator(),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-                      BodyView(
-                        header: '最常使用',
-                        footer: '',
-                        children: [
-                          HotChart(
-                            appUsageData: _convertToHotChartData(_topApps),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-          ),
-        ),
-        // 添加设置按钮到右上角
-        Positioned(
-          top: -8,
-          right: 8,
-          child: TextButton(
-            onPressed: () {
-              Navigator.of(
-                context,
-              ).push(createSlidePageRoute(const SettingsPage()));
-            },
-            style: TextButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-            ),
-            child: const Text(
-              '设置',
-              style: TextStyle(
-                color: Color.fromARGB(222, 11, 145, 255),
-                fontWeight: FontWeight.w500,
+                        )
+                      : Column(
+                          children: [
+                            BodyView(
+                              header: '屏幕使用时间',
+                              footer: _buildOnlineStatus(),
+                              children: [
+                                DayHourChart(
+                                  totalTimeText: _formatTotalTime(
+                                    _totalMinutes,
+                                  ),
+                                  hourlyData: _hourlyData,
+                                  selectedDate: _selectedDate, // 传递选中的日期
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 24),
+                            BodyView(
+                              header: '最常使用',
+                              footer: '',
+                              children: [
+                                HotChart(
+                                  appUsageData: _convertToHotChartData(
+                                    _topApps,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                ],
               ),
             ),
           ),
-        ),
-      ],
+          // 添加设置按钮到右上角
+          Positioned(
+            top: -8,
+            right: 8,
+            child: TextButton(
+              onPressed: () {
+                Navigator.of(
+                  context,
+                ).push(createSlidePageRoute(const SettingsPage()));
+              },
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text(
+                '设置',
+                style: TextStyle(
+                  color: Color.fromARGB(222, 11, 145, 255),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

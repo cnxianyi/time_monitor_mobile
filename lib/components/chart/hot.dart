@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:time_monitor_mobile/routes/page_route_transitions.dart';
 import 'package:time_monitor_mobile/pages/detail_page.dart';
@@ -9,11 +11,24 @@ class HotChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('HotChart.build: 接收到 ${appUsageData.length} 个应用数据');
+
     // 如果没有数据，显示提示信息
     if (appUsageData.isEmpty) {
+      print('HotChart.build: 没有应用数据，显示空状态');
       return const Center(
         child: Padding(padding: EdgeInsets.all(32), child: Text('暂无应用使用数据')),
       );
+    }
+
+    // 打印前3个应用的数据（如果有）
+    if (appUsageData.length > 0) {
+      for (int i = 0; i < min(3, appUsageData.length); i++) {
+        var app = appUsageData[i];
+        print(
+          'HotChart.build: 应用[$i]: ${app['name']}, 时间: ${app['formattedTime']}',
+        );
+      }
     }
 
     // 将ListView替换为Column，使内容随屏幕一起滚动

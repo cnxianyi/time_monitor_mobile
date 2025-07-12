@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:intl/intl.dart';
 
 // 创建颜色类
 class AppColors {
@@ -60,11 +61,13 @@ class LegendsListWidget extends StatelessWidget {
 class DayHourChart extends StatelessWidget {
   final String totalTimeText;
   final Map<int, List<Map<String, dynamic>>> hourlyData;
+  final DateTime selectedDate; // 添加选中的日期参数
 
   DayHourChart({
     super.key,
     required this.totalTimeText,
     required this.hourlyData,
+    required this.selectedDate, // 接收选中的日期
   });
 
   // 更新颜色定义，对应不同类别
@@ -73,6 +76,32 @@ class DayHourChart extends StatelessWidget {
   final socialColor = AppColors.contentColorBlue; // 社交 - 蓝色
   final otherColor = AppColors.contentColorGrey; // 其他 - 灰色
   final betweenSpace = 0.2;
+
+  // 检查是否是今天
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  // 格式化日期用于显示
+  String _formatDateForDisplay(DateTime date) {
+    if (_isToday(date)) {
+      return '今天';
+    }
+
+    final now = DateTime.now();
+    final yesterday = DateTime(now.year, now.month, now.day - 1);
+
+    if (date.year == yesterday.year &&
+        date.month == yesterday.month &&
+        date.day == yesterday.day) {
+      return '昨天';
+    }
+
+    return '';
+  }
 
   BarChartGroupData generateGroupData(
     int x,
@@ -288,9 +317,10 @@ class DayHourChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    final day = now.day.toString().padLeft(2, '0');
-    final month = now.month.toString().padLeft(2, '0');
+    // 使用传入的选中日期
+    final day = selectedDate.day.toString().padLeft(2, '0');
+    final month = selectedDate.month.toString().padLeft(2, '0');
+    final dateDisplay = _formatDateForDisplay(selectedDate);
 
     // 计算各类别总时间
     final categorySummaries = _calculateCategorySummaries();
@@ -302,7 +332,7 @@ class DayHourChart extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$month月$day日 今天',
+            '$month月$day日 $dateDisplay',
             style: TextStyle(
               fontSize: 14,
               fontWeight: FontWeight.bold,
