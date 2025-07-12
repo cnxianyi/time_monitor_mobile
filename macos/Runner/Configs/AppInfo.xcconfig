@@ -8,7 +8,7 @@
 PRODUCT_NAME = time_monitor_mobile
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.timeMonitorMobile
+PRODUCT_BUNDLE_IDENTIFIER = com.xianyi.timeMonitorMobile
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025 com.xianyi. All rights reserved.

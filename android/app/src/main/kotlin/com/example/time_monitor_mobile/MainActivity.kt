@@ -1,4 +1,4 @@
-package com.example.time_monitor_mobile
+package com.xianyi.time_monitor_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

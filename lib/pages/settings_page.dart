@@ -35,7 +35,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _isLoading = false;
         // 使用默认值
         _dailyTimeController.text = '120';
-        _weeklyTimeController.text = '840';
+        _weeklyTimeController.text = '120';
       });
     }
   }
@@ -60,7 +60,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _dailyTimeController.text =
               (data['data']['dailyLimit'] / 60).toStringAsFixed(0) ?? '120';
           _weeklyTimeController.text =
-              (data['data']['everyLimit'] / 60).toStringAsFixed(0) ?? '840';
+              (data['data']['everyLimit'] / 60).toStringAsFixed(0) ?? '120';
           _isLoading = false;
         });
       } else {
@@ -69,7 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
           _isLoading = false;
           // 使用默认值
           _dailyTimeController.text = '120';
-          _weeklyTimeController.text = '840';
+          _weeklyTimeController.text = '120';
         });
       }
     } catch (e) {
@@ -78,7 +78,7 @@ class _SettingsPageState extends State<SettingsPage> {
         _isLoading = false;
         // 使用默认值
         _dailyTimeController.text = '120';
-        _weeklyTimeController.text = '840';
+        _weeklyTimeController.text = '120';
       });
     }
   }
@@ -117,7 +117,7 @@ class _SettingsPageState extends State<SettingsPage> {
         final password = _passwordController.text.trim();
         if (password.isNotEmpty) {
           final todayTime = int.tryParse(_dailyTimeController.text) ?? 120;
-          final dailyTime = int.tryParse(_weeklyTimeController.text) ?? 840;
+          final dailyTime = int.tryParse(_weeklyTimeController.text) ?? 120;
 
           // 发送设置到服务器
           final response = await http.post(
@@ -261,7 +261,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       keyboardType: TextInputType.number,
                       decoration: const InputDecoration(
                         labelText: '每日时间限制（分钟）',
-                        hintText: '例如: 840',
+                        hintText: '例如: 120',
                         border: OutlineInputBorder(),
                       ),
                       validator: (value) {
